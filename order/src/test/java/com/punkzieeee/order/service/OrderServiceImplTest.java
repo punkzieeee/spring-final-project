@@ -1,6 +1,7 @@
 package com.punkzieeee.order.service;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.Mockito.lenient;
 
 import java.util.HashMap;
@@ -15,7 +16,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.jms.core.JmsTemplate;
 
@@ -37,18 +37,22 @@ public class OrderServiceImplTest {
     @Mock
     R2dbcEntityTemplate r2dbcEntityTemplate;
 
+    @Mock
+    ObjectMapper objectMapper;
+    
+    @Mock
+    JmsTemplate jmsTemplate;
+
     @InjectMocks
     OrderServiceImpl orderService;
 
-    @Autowired
-    JmsTemplate jmsTemplate;
-
-    private ObjectMapper objectMapper = new ObjectMapper();
     OrderActionDto orderActionDto;
     OrderAction orderAction;
 
     @BeforeAll
     void setup() {
+        orderService = new OrderServiceImpl(jmsTemplate, objectMapper);
+
         orderActionDto = new OrderActionDto();
         orderActionDto.setAction("register");
         Map<String, String> map = new HashMap<>();
@@ -69,6 +73,7 @@ public class OrderServiceImplTest {
         map.put("data", orderActionDto);
         lenient().when(orderActionRepository.findByAction(orderActionDto.getAction().toUpperCase()))
                 .thenReturn(mono);
+
         mono.doOnSuccess(n -> {
             map.put("actionId", n.getId());
             String object;
@@ -83,9 +88,9 @@ public class OrderServiceImplTest {
         String result = orderService.makeQueueOrder(orderActionDto);
         assertNotNull(result);
     }
-
+    
     @Test
-    void testMakeQueueOrderNegative() {
+    void testMakeQueueOrderFail() {
         StepVerifier.create(orderActionRepository.findByAction(orderActionDto.getAction().toUpperCase()))
                 .expectError();
 

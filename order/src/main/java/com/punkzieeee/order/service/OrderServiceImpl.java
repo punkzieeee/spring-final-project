@@ -30,6 +30,11 @@ public class OrderServiceImpl implements OrderService {
     @Autowired
     ObjectMapper objectMapper;
 
+    public OrderServiceImpl(JmsTemplate jmsTemplate, ObjectMapper objectMapper) {
+        this.jmsTemplate = jmsTemplate;
+        this.objectMapper = objectMapper;
+    }
+
     @Override
     public String makeQueueOrder(OrderActionDto dto) {
         log.info("dto: {}", dto);
