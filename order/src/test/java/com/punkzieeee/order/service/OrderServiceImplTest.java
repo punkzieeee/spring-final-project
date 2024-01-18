@@ -25,6 +25,7 @@ import com.punkzieeee.order.model.OrderAction;
 import com.punkzieeee.order.repository.OrderActionRepository;
 
 import reactor.core.publisher.Mono;
+import reactor.test.StepVerifier;
 
 @ExtendWith(MockitoExtension.class)
 @TestInstance(Lifecycle.PER_CLASS)
@@ -41,7 +42,7 @@ public class OrderServiceImplTest {
 
     @Autowired
     JmsTemplate jmsTemplate;
-    
+
     private ObjectMapper objectMapper = new ObjectMapper();
     OrderActionDto orderActionDto;
     OrderAction orderAction;
@@ -78,6 +79,15 @@ public class OrderServiceImplTest {
                 throw new RuntimeException(e.getMessage());
             }
         });
+
+        String result = orderService.makeQueueOrder(orderActionDto);
+        assertNotNull(result);
+    }
+
+    @Test
+    void testMakeQueueOrderNegative() {
+        StepVerifier.create(orderActionRepository.findByAction(orderActionDto.getAction().toUpperCase()))
+                .expectError();
 
         String result = orderService.makeQueueOrder(orderActionDto);
         assertNotNull(result);
