@@ -7,11 +7,11 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
 import org.springframework.jms.annotation.JmsListener;
+import org.springframework.jms.core.JmsTemplate;
 import org.springframework.messaging.Message;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.punkzieeee.notification.model.Notification;
 import com.punkzieeee.notification.repository.NotificationRepository;
 
@@ -29,7 +29,7 @@ public class ConsumerService {
     R2dbcEntityTemplate r2dbcEntityTemplate;
 
     @Autowired
-    ObjectMapper objectMapper;
+    JmsTemplate jmsTemplate;
 
     @Async
     @JmsListener(destination = "queue.notif")
@@ -49,5 +49,10 @@ public class ConsumerService {
         log.info("data inserted: {}", mono.subscribe(data -> {
             System.out.println(data);
         }));
+
+        object.put("status", "CREATED");
+        log.info("callback: {}", object);
+
+        jmsTemplate.convertAndSend("queue.order.callback", object);
     }
 }

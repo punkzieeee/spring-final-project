@@ -14,7 +14,6 @@ import org.springframework.stereotype.Service;
 import com.punkzieeee.customer.model.Customer;
 import com.punkzieeee.customer.repository.CustomerRepository;
 import com.punkzieeee.customer.repository.OrderStepRepository;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.punkzieeee.customer.dto.CustomerResponseDto;
 import com.punkzieeee.customer.enums.OrderStatus;
 import lombok.extern.slf4j.Slf4j;
@@ -32,9 +31,6 @@ public class ConsumerService {
 
     @Autowired
     R2dbcEntityTemplate r2dbcEntityTemplate;
-
-    @Autowired
-    ObjectMapper objectMapper;
 
     @Autowired
     JmsTemplate jmsTemplate;
@@ -80,5 +76,9 @@ public class ConsumerService {
         }
 
         log.info("dto: {}", dto);
+        object.put("status", dto.getStatus().toString());
+        log.info("callback: {}", object);
+
+        jmsTemplate.convertAndSend("queue.order.callback", object);
     }
 }

@@ -1,5 +1,7 @@
 package com.punkzieeee.orderorchestration.service;
 
+import java.sql.Timestamp;
+import java.util.Calendar;
 import java.util.LinkedHashMap;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.r2dbc.core.R2dbcEntityTemplate;
@@ -9,7 +11,9 @@ import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.punkzieeee.orderorchestration.enums.OrderStatus;
 import com.punkzieeee.orderorchestration.model.OrderStep;
+import com.punkzieeee.orderorchestration.model.OrderTransaction;
 import com.punkzieeee.orderorchestration.repository.OrderStepRepository;
 import lombok.extern.slf4j.Slf4j;
 import reactor.core.publisher.Flux;
@@ -52,11 +56,45 @@ public class OrchestratorService {
         log.info("map: {}", map);
 
         Flux<OrderStep> orderStep = orderStepRepository.findByActionIdOrderByPriority(Long.valueOf(actionId));
-        orderStep.subscribe(step -> {
-            jmsTemplate.convertAndSend(step.getStep(), map);
-            log.info("step: {}", step.getStep());
+        orderStep.collectList().subscribe(step -> {
+            for (int i = 0; i < step.size(); i++) {
+                String queue = step.get(i).getStep();
+                jmsTemplate.convertAndSend(queue, map);
+
+                OrderTransaction start = new OrderTransaction();
+                start.setActionId(Long.valueOf(actionId));
+                start.setCustomerId(map.get("customerId"));
+                start.setStep(queue);
+                start.setStatus(OrderStatus.INIT.toString());
+                start.setCreatedAt(new Timestamp(Calendar.getInstance().getTimeInMillis()));
+                r2dbcEntityTemplate.insert(start).subscribe();
+
+                LinkedHashMap<String, String> callback = (LinkedHashMap<String, String>) jmsTemplate
+                        .receiveAndConvert("queue.order.callback");
+                log.info("callback: {}", callback);
+
+                OrderTransaction finish = new OrderTransaction();
+                finish.setActionId(Long.valueOf(actionId));
+                finish.setCustomerId(map.get("customerId"));
+                finish.setStep(queue);
+                finish.setStatus(callback.get("status"));
+                finish.setCreatedAt(new Timestamp(Calendar.getInstance().getTimeInMillis()));
+                r2dbcEntityTemplate.insert(finish).subscribe();
+
+                log.info("step: {}, trx: {}", queue, finish);
+
+                if (callback.get("status").equalsIgnoreCase(OrderStatus.FAILED.toString()))
+                    throw new RuntimeException("Process failed!");
+            }
         });
 
         log.info("orderStep: {}", orderStep.collectList().block());
+    }
+
+    @JmsListener(destination = "queue.complete")
+    private void complete(Message<LinkedHashMap<String, String>> message) {
+        LinkedHashMap<String, String> object = message.getPayload();
+        object.put("status", OrderStatus.CREATED.toString());
+        jmsTemplate.convertAndSend("queue.order.callback", object);
     }
 }
