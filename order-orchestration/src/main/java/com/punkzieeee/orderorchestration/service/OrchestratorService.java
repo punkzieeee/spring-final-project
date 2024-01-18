@@ -34,6 +34,11 @@ public class OrchestratorService {
     @Autowired
     ObjectMapper objectMapper;
 
+    public OrchestratorService(JmsTemplate jmsTemplate, ObjectMapper objectMapper) {
+        this.jmsTemplate = jmsTemplate;
+        this.objectMapper = objectMapper;
+    }
+
     @JmsListener(destination = "queue.order")
     public void register(final Message<String> message) throws Exception {
         log.info("message: {}", message);
