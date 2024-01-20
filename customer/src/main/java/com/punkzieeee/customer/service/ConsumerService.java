@@ -35,6 +35,10 @@ public class ConsumerService {
     @Autowired
     JmsTemplate jmsTemplate;
 
+    public ConsumerService(JmsTemplate jmsTemplate) {
+        this.jmsTemplate = jmsTemplate;
+    }
+
     @Async
     @JmsListener(destination = "queue.crm.register")
     public void register(Message<LinkedHashMap<String, String>> message) throws Exception {
