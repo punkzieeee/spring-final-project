@@ -31,6 +31,11 @@ public class ConsumerService {
     @Autowired
     JmsTemplate jmsTemplate;
 
+    public ConsumerService(R2dbcEntityTemplate r2dbcEntityTemplate, JmsTemplate jmsTemplate) {
+        this.r2dbcEntityTemplate  =r2dbcEntityTemplate;
+        this.jmsTemplate = jmsTemplate;
+    }
+
     @Async
     @JmsListener(destination = "queue.notif")
     public void post(Message<LinkedHashMap<String, String>> message) throws Exception {
